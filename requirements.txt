@@ -1,0 +1,15 @@
+torch==2.6.0a0+ecf3bae40a.nv25.1
+transformers==4.45.2
+accelerate==1.11.0
+datasets==3.6.0
+huggingface-hub==0.33.4
+numpy==1.26.4
+pandas==2.2.2
+tqdm==4.67.1
+matplotlib==3.10.0
+scikit-learn==1.6.1
+requests==2.32.3
+safetensors==0.5.2
+sentencepiece==0.2.1
+protobuf==4.24.4
+tokenizers==0.20.3

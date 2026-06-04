@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.log
+slurm-*.out
+*.err
+.DS_Store
+.venv/
+venv/
+env/
+wandb/
+outputs/
+latency_throughput_outputs/
+datasets/cache/
+data/**/*.csv
+data/**/*.json
+data/**/*.jsonl
+*.sif
