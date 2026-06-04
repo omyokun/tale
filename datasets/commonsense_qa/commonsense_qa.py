@@ -1,46 +1,62 @@
-# dataset_prep.py
-from datasets import load_dataset
+import argparse
 import csv
-import os
+from pathlib import Path
 
-def prepare_dataset(split, output_csv):
-    # Load the specified split of CommonsenseQA from HF
-    dataset = load_dataset("tau/commonsense_qa", split=split, cache_dir="/tmpdir/m24047nmmr/pruning/datasets/cache")
-    
-    with open(output_csv, "w", newline='', encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["id", "question", "question_concept", "choice_A", "choice_B", "choice_C", "choice_D", "choice_E", "answer_key"])
-        
+from datasets import load_dataset
+
+
+def prepare_dataset(split: str, output_csv: str, cache_dir: str | None) -> None:
+    dataset = load_dataset("tau/commonsense_qa", split=split, cache_dir=cache_dir)
+    output_path = Path(output_csv)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "id",
+                "question",
+                "question_concept",
+                "choice_A",
+                "choice_B",
+                "choice_C",
+                "choice_D",
+                "choice_E",
+                "answer_key",
+            ]
+        )
+
         for item in dataset:
-            id_val = item["id"]
-            question = item["question"]
-            question_concept = item["question_concept"]
-            choices = item["choices"]
-            answer_key = item["answerKey"]
-            
-            # Extract choices - CommonsenseQA has 5 choices (A, B, C, D, E)
-            choice_texts = choices["text"]  # List of choice texts
-            choice_labels = choices["label"]  # List of labels ['A', 'B', 'C', 'D', 'E']
-            
-            # Create a mapping from labels to texts
-            choice_mapping = dict(zip(choice_labels, choice_texts))
-            
-            # Write row with all choices as separate columns
-            writer.writerow([
-                id_val,
-                question, 
-                question_concept,
-                choice_mapping.get('A', ''),  # Choice A
-                choice_mapping.get('B', ''),  # Choice B  
-                choice_mapping.get('C', ''),  # Choice C
-                choice_mapping.get('D', ''),  # Choice D
-                choice_mapping.get('E', ''),  # Choice E
-                answer_key
-            ])
-    
-    print(f"CSV for split '{split}' saved as {output_csv}")
-    print(f"Total examples: {len(dataset)}")
+            choice_mapping = dict(zip(item["choices"]["label"], item["choices"]["text"]))
+            writer.writerow(
+                [
+                    item["id"],
+                    item["question"],
+                    item["question_concept"],
+                    choice_mapping.get("A", ""),
+                    choice_mapping.get("B", ""),
+                    choice_mapping.get("C", ""),
+                    choice_mapping.get("D", ""),
+                    choice_mapping.get("E", ""),
+                    item["answerKey"],
+                ]
+            )
 
-# Prepare validation CSV for CommonsenseQA
-#prepare_dataset("validation", "/tmpdir/m24047nmmr/pruning/datasets/commonsense_qa/commonsenseqa_validation.csv")
-prepare_dataset("train", "/tmpdir/m24047nmmr/pruning/datasets/commonsense_qa/commonsenseqa_train.csv")
+    print(f"Saved {len(dataset)} examples to {output_path}")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Prepare CommonsenseQA CSVs.")
+    parser.add_argument("--split", default="validation")
+    parser.add_argument("--output", default="data/commonsense_qa/commonsenseqa_validation.csv")
+    parser.add_argument("--cache-dir", default=None)
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    prepare_dataset(args.split, args.output, args.cache_dir)
+
+
+if __name__ == "__main__":
+    main()

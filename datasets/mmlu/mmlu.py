@@ -1,40 +1,59 @@
-# dataset_prep.py
-from datasets import load_dataset
+import argparse
 import csv
-import os
+from pathlib import Path
 
-def prepare_dataset(subset, split, output_csv):
-    # Load the specified subset and split of MMLU from HF
-    dataset = load_dataset("cais/mmlu", subset, split=split, cache_dir="/tmpdir/m24047nmmr/pruning/datasets/cache")
-    dataset = dataset.select(range(10000))
+from datasets import load_dataset
 
-    with open(output_csv, "w", newline='', encoding="utf-8") as f:
-        writer = csv.writer(f)
+
+def prepare_dataset(
+    subset: str,
+    split: str,
+    output_csv: str,
+    cache_dir: str | None,
+    limit: int | None,
+) -> None:
+    dataset = load_dataset("cais/mmlu", subset, split=split, cache_dir=cache_dir)
+    if limit is not None:
+        dataset = dataset.select(range(min(limit, len(dataset))))
+
+    output_path = Path(output_csv)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
         writer.writerow(["question", "choice_A", "choice_B", "choice_C", "choice_D", "answer", "subject"])
-        
-        for item in dataset:
-            question = item["question"]
-            choices = item["choices"]  # This is a list of 4 choices
-            answer = item["answer"]    # This is the index (0, 1, 2, 3) corresponding to A, B, C, D
-            subject = item["subject"]  # Subject name
-            
-            # Convert answer index to letter (0->A, 1->B, 2->C, 3->D)
-            answer_letter = chr(ord('A') + answer)
-            
-            # Write row with all choices as separate columns
-            writer.writerow([
-                question, 
-                choices[0],  # Choice A
-                choices[1],  # Choice B  
-                choices[2],  # Choice C
-                choices[3],  # Choice D
-                answer_letter,
-                subject
-            ])
-    
-    print(f"CSV for subset '{subset}' split '{split}' saved as {output_csv}")
-    print(f"Total examples: {len(dataset)}")
 
-# Prepare validation CSV for "all" subset
-#prepare_dataset("all", "validation", "/tmpdir/m24047nmmr/pruning/datasets/mmlu/mmlu_all_validation.csv")
-prepare_dataset("all", "auxiliary_train", "/tmpdir/m24047nmmr/pruning/datasets/mmlu/mmlu_all_train.csv")
+        for item in dataset:
+            answer_letter = chr(ord("A") + int(item["answer"]))
+            writer.writerow(
+                [
+                    item["question"],
+                    item["choices"][0],
+                    item["choices"][1],
+                    item["choices"][2],
+                    item["choices"][3],
+                    answer_letter,
+                    item["subject"],
+                ]
+            )
+
+    print(f"Saved {len(dataset)} examples to {output_path}")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Prepare MMLU CSVs.")
+    parser.add_argument("--subset", default="all")
+    parser.add_argument("--split", default="validation")
+    parser.add_argument("--output", default="data/mmlu/mmlu_all_validation.csv")
+    parser.add_argument("--cache-dir", default=None)
+    parser.add_argument("--limit", type=int, default=None)
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    prepare_dataset(args.subset, args.split, args.output, args.cache_dir, args.limit)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,28 +1,39 @@
-# dataset_prep.py
-from datasets import load_dataset
+import argparse
 import csv
-import os
+from pathlib import Path
 
-def prepare_dataset(split, output_csv):
-    # Load the specified split of ARC-Easy from HF
-    #dataset = load_dataset("allenai/ai2_arc", "ARC-Easy", split=split, cache_dir="/tmpdir/m24047nmmr/pruning/datasets/cache")
-    dataset = load_dataset("allenai/ai2_arc", "ARC-Challenge", split=split, cache_dir="/tmpdir/m24047nmmr/pruning/datasets/cache")
-    
-    with open(output_csv, "w", newline='', encoding="utf-8") as f:
-        writer = csv.writer(f)
+from datasets import load_dataset
+
+
+def prepare_dataset(config: str, split: str, output_csv: str, cache_dir: str | None) -> None:
+    dataset = load_dataset("allenai/ai2_arc", config, split=split, cache_dir=cache_dir)
+    output_path = Path(output_csv)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
         writer.writerow(["question", "choice_text", "choice_label", "answer_key"])
-        
+
         for item in dataset:
-            question = item["question"]
-            answer_key = item["answerKey"]
-            for choice in item["choices"]["text"]:
-                idx = item["choices"]["text"].index(choice)
-                label = item["choices"]["label"][idx]
-                writer.writerow([question, choice, label, answer_key])
+            for label, choice in zip(item["choices"]["label"], item["choices"]["text"]):
+                writer.writerow([item["question"], choice, label, item["answerKey"]])
 
-    print(f"CSV for {split} saved as {output_csv}")
+    print(f"Saved {len(dataset)} examples to {output_path}")
 
-# Prepare train and validation CSVs
-#prepare_dataset("train", "/tmpdir/m24047nmmr/pruning/datasets/arc/arc_easy_train.csv")
-#prepare_dataset("validation", "/tmpdir/m24047nmmr/pruning/datasets/arc/arc_easy_validation.csv")
-prepare_dataset("train", "/tmpdir/m24047nmmr/pruning/datasets/arc/arc_challenge_train.csv")
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Prepare ARC-Easy or ARC-Challenge CSVs.")
+    parser.add_argument("--config", choices=["ARC-Easy", "ARC-Challenge"], default="ARC-Easy")
+    parser.add_argument("--split", default="validation")
+    parser.add_argument("--output", default="data/arc/arc_easy_validation.csv")
+    parser.add_argument("--cache-dir", default=None)
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    prepare_dataset(args.config, args.split, args.output, args.cache_dir)
+
+
+if __name__ == "__main__":
+    main()
