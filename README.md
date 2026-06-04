@@ -8,7 +8,7 @@ Paper: <https://arxiv.org/pdf/2510.22767>
 
 ![TALE overview](assets/tale_overview.png)
 
-TALE is an inference-time layer elimination method for open-weight decoder LLMs. For a fixed task, it greedily evaluates candidate single-layer removals, keeps the removal that gives the best validation accuracy, and repeats until accuracy falls below a user-defined threshold. The paper uses an 8 percentage point threshold below the baseline and runs the main searches on 1 A100 80GB GPU with Slurm.
+TALE is an inference-time layer elimination method for open-weight decoder LLMs. For a fixed task, it greedily evaluates candidate single-layer removals, keeps the removal that gives the best validation accuracy, and repeats until accuracy falls below a user-defined threshold.
 
 ## Repository Layout
 
@@ -38,12 +38,6 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 export PYTHONPATH="$PWD/src:${PYTHONPATH:-}"
-```
-
-If the model is gated, authenticate with Hugging Face before running:
-
-```bash
-huggingface-cli login
 ```
 
 ## Prepare Data
@@ -93,11 +87,9 @@ outputs/tale_search/<task>/
 └── baseline_predictions.json
 ```
 
-`summary.json` reports the baseline, final, BEST, and BSBA layer sets using 0-indexed layer ids.
-
 ## Slurm
 
-The search was run on 1 A100 80GB GPU in the paper experiments. Use the Slurm script as a template and adjust `#SBATCH --gres` if your cluster uses a different GPU resource name.
+In the paper experiments, the search was performed using a single NVIDIA A100 80GB GPU. You may use the provided Slurm script as a template and modify it according to the configuration, resource limits, and scheduling policies of your own cluster.
 
 ```bash
 MODEL_PATH=<MODEL_PATH_OR_HF_ID> \
