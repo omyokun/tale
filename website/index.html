@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TELL-TALE: Task-Aware Layer Elimination for LLMs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #fff;
+      color: #111;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    /* ── WRAPPER ── */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 3.5rem 1.5rem 2rem;
+    }
+
+    .venue-pill {
+      display: inline-block;
+      border: 1.5px solid #111;
+      border-radius: 999px;
+      padding: 5px 18px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.2px;
+    }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      line-height: 1.2;
+      font-weight: 400;
+      color: #111;
+      margin-bottom: 1.5rem;
+    }
+
+    .title-highlight { color: #5a4fcf; }
+
+    .authors {
+      font-size: 1rem;
+      margin-bottom: 0.3rem;
+      color: #333;
+    }
+    .authors a {
+      color: #4a6cf7;
+      text-decoration: none;
+    }
+    .authors a:hover { text-decoration: underline; }
+
+    .affiliation {
+      font-size: 0.85rem;
+      color: #777;
+      margin-bottom: 1.75rem;
+    }
+
+    /* ── BUTTONS ── */
+    .btn-row {
+      display: flex;
+      gap: 0.6rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 999px;
+      padding: 8px 20px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn:hover { background: #333; }
+    .btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    /* ── SECTION HEADINGS ── */
+    h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(1.6rem, 3vw, 2rem);
+      font-weight: 400;
+      text-align: center;
+      margin-bottom: 1.25rem;
+      color: #111;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: #111;
+    }
+
+    /* ── SECTION SPACING ── */
+    .section {
+      padding: 3rem 0;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e5e5e5;
+      margin: 0;
+    }
+
+    /* ── ABSTRACT ── */
+    .abstract-text {
+      font-size: 0.97rem;
+      line-height: 1.8;
+      text-align: justify;
+      color: #222;
+    }
+
+    /* ── FIGURES ── */
+    .figure {
+      margin: 1.75rem 0;
+      text-align: center;
+    }
+    .figure img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .figure figcaption {
+      margin-top: 0.65rem;
+      font-size: 0.83rem;
+      color: #555;
+      text-align: left;
+      line-height: 1.6;
+    }
+    .figure figcaption b { color: #111; }
+
+    /* ── FIGURE GRID ── */
+    .fig-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    @media (max-width: 650px) { .fig-grid { grid-template-columns: 1fr 1fr; } }
+
+    .fig-grid .figure { margin: 0; }
+    .fig-grid figcaption { text-align: center; }
+
+    /* ── TABLES ── */
+    .table-wrap { overflow-x: auto; margin: 1.5rem 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    thead tr {
+      border-top: 1.5px solid #111;
+      border-bottom: 1px solid #ccc;
+    }
+    thead th {
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      font-weight: 600;
+      color: #111;
+      background: none;
+    }
+    tbody td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid #eee;
+      color: #333;
+    }
+    tbody tr:last-child td { border-bottom: 1.5px solid #111; }
+    .tale-row td { font-weight: 600; color: #111; }
+    .best { font-weight: 700; }
+
+    /* ── BIBTEX ── */
+    .bibtex-box {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 1.5rem;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.82rem;
+      line-height: 1.75;
+      color: #222;
+      overflow-x: auto;
+      white-space: pre;
+      margin-top: 1rem;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      font-size: 0.82rem;
+      color: #888;
+      border-top: 1px solid #e5e5e5;
+    }
+    footer a { color: #555; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── ALGO ── */
+    .algo-box {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 1.5rem;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.82rem;
+      line-height: 1.8;
+      color: #222;
+      margin: 1.5rem 0;
+    }
+    .algo-box .algo-title {
+      font-weight: 600;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.83rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #333;
+    }
+
+    /* lead text under h2 */
+    .section-lead {
+      text-align: center;
+      font-size: 0.92rem;
+      color: #666;
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="venue-pill">Accepted at ACL 2025</div>
+
+  <h1>
+    <span class="title-highlight">TELL-TALE</span>: Task Efficient LLMs<br />with Task Aware Layer Elimination
+  </h1>
+
+  <p class="authors">
+    Omar Naim<sup>1*</sup>,&ensp;
+    Krish Sharma<sup>1*</sup>,&ensp;
+    Nicholas Asher<sup>1</sup>
+  </p>
+  <p class="affiliation">
+    <sup>1</sup>IRIT, Université Paul Sabatier, Toulouse, France
+    &emsp;·&emsp;
+    <sup>*</sup>Equal contribution
+  </p>
+
+  <div class="btn-row">
+    <a class="btn" href="https://arxiv.org/abs/2510.22767" target="_blank">
+      <!-- document icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      Paper
+    </a>
+    <a class="btn" href="https://arxiv.org/abs/2510.22767" target="_blank">
+      <!-- arxiv-style icon -->
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+      </svg>
+      arXiv
+    </a>
+    <a class="btn" href="https://github.com/omyokun/tale" target="_blank">
+      <!-- github icon -->
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.23c-3.34.72-4.04-1.42-4.04-1.42-.55-1.39-1.33-1.76-1.33-1.76-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.49 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.14 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.19.69.82.57C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+      Code
+    </a>
+    <a class="btn" href="https://arxiv.org/pdf/2510.22767" target="_blank">
+      <!-- pdf icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      PDF
+    </a>
+  </div>
+
+  <!-- Main teaser figure -->
+  <figure class="figure" style="max-width:680px; margin-left:auto; margin-right:auto;">
+    <img src="images/tale_cat_v2.png" alt="TALE overview: how BEST and BSBA models are produced" />
+    <figcaption>
+      <b>Figure 1.</b> Overview of TALE. Starting from a pretrained LLM, TALE iteratively removes layers to produce two model variants:
+      the <em>Best</em> model (highest accuracy, shown with ★) and the <em>BSBA</em> model
+      (best speedup while maintaining at least baseline accuracy, shown with ●).
+    </figcaption>
+  </figure>
+</div>
+
+<hr />
+
+<!-- ── ABSTRACT ── -->
+<div class="container">
+  <section class="section">
+    <h2>Abstract</h2>
+    <p class="abstract-text">
+      Large Language Models (LLMs) provide impressive performance but at the cost of substantial computation requirements.
+      Lowering those requirements while maintaining LLM original accuracy has proved difficult.
+      To solve this problem, we offer <b>TALE</b> (Task-Aware Layer Elimination), an inference-time algorithm that prunes entire
+      transformer layers in an LLM by directly optimizing task-specific validation performance.
+      We empirically demonstrate that LLM compression that preserves or exceeds baseline performance is inherently
+      <b>task-specific</b> — a crucial finding that motivates the TALE approach.
+      We evaluate TALE on <b>9 tasks</b> and <b>5 models</b>, including LLaMA 3.1 8B, Qwen 2.5 7B, and Mistral 7B,
+      under both zero-shot and few-shot settings.
+      TALE consistently improves accuracy and reduces computational cost across all benchmarks,
+      outperforming previous general and layer-wise pruning methods such as SLEB.
+      A minimal, one-time pruning overhead (typically 1–2 GPU-hours) yields continued task-maximal inference savings,
+      making it an ideal tool for production-ready, domain-specific models.
+      TALE produces further performance gains when combined with fine-tuning, offering a rigorous, deployable solution
+      for creating maximally efficient, task-specialized LLMs.
+    </p>
+  </section>
+</div>
+
+<hr />
+
+<!-- ── METHOD ── -->
+<div class="container">
+  <section class="section">
+    <h2>Method</h2>
+    <p class="section-lead">
+      TALE is a greedy, iterative, training-free algorithm. No retraining. No architectural changes. Hardware-agnostic.
+    </p>
+
+    <p style="text-align:justify; font-size:0.97rem; margin-bottom:1.25rem;">
+      A transformer maps input vectors through a stack of <i>L</i> layers via residual connections.
+      Removing layer ℓ simply sets its residual contribution to zero: <i>X<sup>(ℓ)</sup> = X<sup>(ℓ−1)</sup></i>.
+      This makes the architecture naturally amenable to layer-wise pruning without any weight modification.
+    </p>
+    <p style="text-align:justify; font-size:0.97rem; margin-bottom:1.5rem;">
+      Our key observation is that intermediate representations <i>X<sup>(k)</sup></i>, decoded at layer <i>k &lt; L</i>,
+      can achieve <b>higher task accuracy than the final layer</b>. Some layers contribute marginally or introduce
+      representational noise for a given task — and selectively removing them preserves or even improves downstream accuracy.
+    </p>
+
+    <div class="algo-box">
+      <div class="algo-title">Algorithm 1 — TALE: Iterative Layer Pruning</div>
+      <b>Input:</b>  Pretrained model M with L layers; validation set D_val; threshold ε
+      <b>Output:</b> Compressed model M*
+
+      Initialize M* ← M
+      Repeat:
+        For each layer ℓ ∈ {1, …, L} of M*:
+          Build M₋ℓ by removing layer ℓ
+          Compute A_ℓ = Acc(M₋ℓ, D_val)
+        Select ℓ* = argmax_ℓ A_ℓ
+        If A_ℓ* ≥ Acc(M*, D_val) − ε:
+          Update M* ← M₋ℓ*
+        Else: break
+      Until all accuracies are below threshold
+      Return M*</div>
+
+    <p style="font-size:0.9rem; color:#555; text-align:justify;">
+      The stopping threshold ε is set to 8% below baseline task accuracy, allowing the search to explore slightly
+      lower-performing configurations before converging. In practice, the pruning of LLaMA 3.1 8B completes in
+      approximately <b>1–2 GPU-hours</b> on a single A100, amortized over the model's entire inference lifetime.
+      TALE requires only 500–1500 validation examples to determine optimal layer removal.
+    </p>
+  </section>
+</div>
+
+<hr />
+
+<!-- ── RESULTS ── -->
+<div class="container">
+  <section class="section">
+    <h2>Results</h2>
+
+    <figure class="figure">
+      <img src="images/performance_comparison_final.png"
+           alt="Zero-shot performance comparison across four language models" />
+      <figcaption>
+        <b>Figure 2.</b> Zero-shot performance comparison across four language models with layer dropping.
+        Light blue bars show baseline performance; dark blue bars show best model performance after TALE pruning.
+        Percentages indicate absolute accuracy gain over the unpruned model.
+        Notable: LLaMA 3.1 8B improves from 39.0% → 59.0% on GSM8K-Hard with just one layer dropped.
+      </figcaption>
+    </figure>
+
+    <h3>1. Comparison with Baselines</h3>
+    <p style="font-size:0.9rem; color:#555; margin-bottom:1rem;">
+      Evaluated on LLaMA-2-7B and LLaMA-2-13B using LM-Eval accuracy (zero-shot).
+      TALE is the only method that consistently exceeds the unpruned baseline.
+    </p>
+
+    <figure class="figure">
+      <img src="images/llama_comparison_teal.png"
+           alt="Performance comparison of pruning methods on LLaMA-2 models" />
+      <figcaption>
+        <b>Figure 3.</b> Performance comparison across seven pruning approaches for LLaMA-2-7B (left) and LLaMA-2-13B (right).
+        TALE achieves the highest accuracy across all four benchmarks at equivalent 10% sparsity,
+        outperforming SLEB, SparseGPT, Wanda, and SliceGPT.
+      </figcaption>
+    </figure>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Method</th>
+            <th>Sparsity</th>
+            <th>WinoGrande</th>
+            <th>HellaSwag</th>
+            <th>ARC-Easy</th>
+            <th>ARC-Challenge</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td rowspan="7" style="font-weight:600; color:#111;">LLaMA-2-7B</td>
+              <td>Baseline</td><td>0%</td><td>69.1</td><td>76.0</td><td>74.6</td><td>46.3</td></tr>
+          <tr><td>SparseGPT</td><td>50%</td><td>64.3</td><td>57.9</td><td>60.3</td><td>33.8</td></tr>
+          <tr><td>Wanda</td><td>50%</td><td>61.9</td><td>54.8</td><td>56.9</td><td>32.1</td></tr>
+          <tr><td>SliceGPT</td><td>25%</td><td>62.9</td><td>53.1</td><td>57.9</td><td>33.3</td></tr>
+          <tr><td>SliceGPT</td><td>30%</td><td>60.8</td><td>47.9</td><td>51.4</td><td>30.9</td></tr>
+          <tr><td>SLEB</td><td>10%</td><td>62.4</td><td>69.3</td><td>62.7</td><td>36.9</td></tr>
+          <tr class="tale-row"><td>TALE (ours)</td><td>10%</td>
+              <td class="best">73.1</td><td class="best">80.0</td>
+              <td class="best">76.7</td><td class="best">54.5</td></tr>
+
+          <tr><td rowspan="7" style="font-weight:600; color:#111;">LLaMA-2-13B</td>
+              <td>Baseline</td><td>0%</td><td>72.2</td><td>79.4</td><td>77.5</td><td>49.2</td></tr>
+          <tr><td>SparseGPT</td><td>50%</td><td>68.3</td><td>65.2</td><td>66.4</td><td>38.8</td></tr>
+          <tr><td>Wanda</td><td>50%</td><td>66.8</td><td>62.2</td><td>64.1</td><td>36.1</td></tr>
+          <tr><td>SliceGPT</td><td>25%</td><td>67.0</td><td>56.9</td><td>62.1</td><td>37.4</td></tr>
+          <tr><td>SliceGPT</td><td>30%</td><td>66.1</td><td>52.4</td><td>56.1</td><td>33.2</td></tr>
+          <tr><td>SLEB</td><td>10%</td><td>66.9</td><td>74.4</td><td>71.8</td><td>41.6</td></tr>
+          <tr class="tale-row"><td>TALE (ours)</td><td>10%</td>
+              <td class="best">76.8</td><td class="best">83.4</td>
+              <td class="best">80.5</td><td class="best">53.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:0.8rem; color:#888; margin-top:0.5rem;">
+      LM-Eval accuracy (%) on zero-shot benchmarks. Bold = best per model.
+    </p>
+
+    <h3 style="margin-top:2.5rem;">2. Computational Efficiency</h3>
+    <p style="font-size:0.92rem; color:#444; text-align:justify;">
+      TALE improves <b>first-token latency in 9/9 settings</b> (macro average: −14.3%) and
+      <b>throughput in 9/9 settings</b> (macro average: +17.9%), measured on a single A100-80GB GPU.
+      The reported model is the Best variant, not BSBA. The one-time pruning cost (1–2 GPU-hours) is
+      negligible relative to the inference savings across a model's deployment lifetime.
+    </p>
+  </section>
+</div>
+
+<hr />
+
+<!-- ── PRUNING TRAJECTORIES ── -->
+<div class="container">
+  <section class="section">
+    <h2>Pruning Trajectories</h2>
+    <p class="section-lead">
+      Accuracy of LLaMA 3.1 8B as layers are progressively removed.
+      ★ = best model &nbsp;·&nbsp; ● = best speedup at baseline accuracy (BSBA).
+    </p>
+
+    <figure class="figure">
+      <img src="images/iteration_accuracy_separate.png"
+           alt="Accuracy progression of TALE across benchmark datasets" />
+      <figcaption>
+        <b>Figure 4.</b> Accuracy progression of TALE across three benchmark datasets for LLaMA 3.1 8B.
+        The first iteration typically provides the largest accuracy boost.
+        Trajectories then follow a monotonic decline; once accuracy drops below baseline − 8%, TALE stops.
+      </figcaption>
+    </figure>
+
+    <h3>Per-Task Accuracy Curves</h3>
+    <div class="fig-grid">
+      <figure class="figure">
+        <img src="images/arc-easy.png" alt="ARC-Easy" />
+        <figcaption>ARC-Easy</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="images/arc-challenge.png" alt="ARC-Challenge" />
+        <figcaption>ARC-Challenge</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="images/winogrande.png" alt="Winogrande" />
+        <figcaption>Winogrande</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="images/mmlu.png" alt="MMLU" />
+        <figcaption>MMLU</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="images/boolq.png" alt="BoolQ" />
+        <figcaption>BoolQ</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="images/commonqa.png" alt="CommonsenseQA" />
+        <figcaption>CommonsenseQA</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="images/math500.png" alt="MATH500" />
+        <figcaption>MATH500</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="images/bigbench.png" alt="BIG-Bench" />
+        <figcaption>BIG-Bench</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="images/std_deviation.png" alt="Model stability heatmap" />
+        <figcaption>Stability across 5 seeds (σ)</figcaption>
+      </figure>
+    </div>
+  </section>
+</div>
+
+<hr />
+
+<!-- ── FINE-TUNING ── -->
+<div class="container">
+  <section class="section">
+    <h2>Synergy with Fine-Tuning</h2>
+    <p style="font-size:0.95rem; color:#444; text-align:justify; margin-bottom:1.5rem;">
+      Rather than hurting fine-tuning, TALE complements it. Pruning before fine-tuning reduces training time
+      by ~18.5% while further improving accuracy. Iterating pruning and fine-tuning yields the best results
+      across all settings. TALE acts as a regularizer, simplifying the optimization landscape by removing
+      redundant layers before adaptation.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Task</th>
+            <th>Baseline</th>
+            <th>TALE Only</th>
+            <th>FT Only</th>
+            <th>TALE → FT</th>
+            <th>FT → TALE</th>
+            <th>(TALE→FT)→TALE</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="4" style="font-weight:600;">LLaMA 3.1 8B</td>
+            <td>Winogrande</td>
+            <td>53.8</td><td>56.7</td><td>85.0</td>
+            <td class="best">87.1</td><td>86.7</td><td>87.4</td>
+          </tr>
+          <tr>
+            <td>MMLU</td>
+            <td>54.9</td><td>59.9</td><td>63.6</td>
+            <td>63.5</td><td class="best">64.2</td><td>64.0</td>
+          </tr>
+          <tr>
+            <td>CommonQA</td>
+            <td>72.2</td><td>75.3</td><td>81.9</td>
+            <td>81.8</td><td class="best">83.4</td><td>82.9</td>
+          </tr>
+          <tr>
+            <td>GSM8K</td>
+            <td>15.1</td><td>37.1</td><td>42.7</td>
+            <td class="best">54.0</td><td>50.9</td><td>54.0</td>
+          </tr>
+          <tr>
+            <td rowspan="2" style="font-weight:600;">Qwen 0.5B</td>
+            <td>Winogrande</td>
+            <td>49.9</td><td>51.9</td><td>50.4</td>
+            <td>50.4</td><td>50.5</td><td class="best">52.5</td>
+          </tr>
+          <tr>
+            <td>MMLU</td>
+            <td>31.5</td><td>40.0</td><td>44.9</td>
+            <td>43.8</td><td class="best">45.5</td><td>45.6</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:0.8rem; color:#888; margin-top:0.5rem;">
+      Accuracy (%) under different pruning and fine-tuning regimes. Bold = best per row.
+    </p>
+  </section>
+</div>
+
+<hr />
+
+<!-- ── BIBTEX ── -->
+<div class="container">
+  <section class="section">
+    <h2>BibTeX</h2>
+    <pre class="bibtex-box">@inproceedings{naim2025tale,
+  title     = {TELL-TALE: Task Efficient LLMs with Task Aware Layer Elimination},
+  author    = {Naim, Omar and Sharma, Krish and Asher, Nicholas},
+  booktitle = {Proceedings of the 63rd Annual Meeting of the
+               Association for Computational Linguistics (ACL)},
+  year      = {2025},
+  url       = {https://arxiv.org/abs/2510.22767},
+}</pre>
+  </section>
+</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <p>
+    Omar Naim · Krish Sharma · Nicholas Asher &nbsp;—&nbsp;
+    IRIT, Université Paul Sabatier, Toulouse, France
+  </p>
+  <p style="margin-top:0.4rem;">
+    <a href="https://arxiv.org/abs/2510.22767" target="_blank">arXiv</a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/omyokun/tale" target="_blank">GitHub</a>
+    &nbsp;·&nbsp;
+    <a href="https://arxiv.org/pdf/2510.22767" target="_blank">PDF</a>
+  </p>
+  <p style="margin-top:0.4rem; font-size:0.78rem;">
+    Supported by ANR grants SARER, Summ-RE (ANR-20-CE23-0017), ANITI (ANR-19-PI3A-0004),
+    and CALMIP HPC resources (P23060, M24047).
+  </p>
+</footer>
+
+</body>
+</html>
