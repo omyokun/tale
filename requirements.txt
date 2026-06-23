@@ -1,0 +1,19 @@
+# Core
+torch>=2.1.0
+transformers>=4.40.0
+accelerate>=0.27.0
+tokenizers>=0.15.0
+
+# Data
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Progress
+tqdm>=4.66.0
+
+# Optional: lm-evaluation-harness (needed for --eval lmeval)
+# Install separately:  pip install lm-eval
+# lm-eval>=0.4.0
+
+# Optional: multi-node monitoring
+psutil>=5.9.0
